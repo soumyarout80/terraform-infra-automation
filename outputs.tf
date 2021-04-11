@@ -46,3 +46,7 @@ output "igw_id" {
   value       = join("", aws_internet_gateway.default.*.id)
   description = "The ID of the Internet Gateway."
 }
+
+output "elb_dns_name" {
+  value = aws_elb.web_elb.dns_name
+}

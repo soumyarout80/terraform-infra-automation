@@ -121,9 +121,9 @@ resource "aws_route" "private_nat_gateway" {
     create = "5m"
   }
 }
-##########################
+###################################################################################
 # Route table association
-##########################
+###################################################################################
 resource "aws_route_table_association" "private" {
   count = 3
 
@@ -179,4 +179,170 @@ resource "aws_subnet" "public" {
         var.azs[0]
       )
     }
+}
+
+###################################################################################
+# Web_server SecurityGroup
+###################################################################################
+resource "aws_security_group" "allow_http" {
+  name = "allow_http"
+  description = "Allow HTTP inbound connections"
+  vpc_id = aws_vpc.default.id
+
+  ingress {
+    from_port = 80
+    to_port = 80
+    protocol = "tcp"
+    cidr_blocks = [
+      "0.0.0.0/0"]
+  }
+
+  egress {
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
+    cidr_blocks = [
+      "0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "Allow HTTP Security Group"
+  }
+}
+###################################################################################
+# Web_server LaunchConfiguration
+###################################################################################
+
+
+resource "aws_launch_configuration" "web" {
+  name_prefix = "web-"
+
+  image_id = "ami-0767046d1677be5a0" # Ubuntu server 20.4 LTS (HVM), SSD Volume Type
+  instance_type = "t2.micro"
+  key_name = "soumya-app"
+
+  security_groups = [ aws_security_group.allow_http.id ]
+  associate_public_ip_address = true
+
+  user_data = filebase64("${path.module}/bootstrap.sh")
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+
+###################################################################################
+# Web_server ELB Configuration
+###################################################################################
+
+resource "aws_security_group" "elb_http" {
+  name        = "elb_http"
+  description = "Allow HTTP traffic to instances through Elastic Load Balancer"
+  vpc_id = aws_vpc.default.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port       = 0
+    to_port         = 0
+    protocol        = "-1"
+    cidr_blocks     = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "Allow HTTP through ELB Security Group"
+  }
+}
+
+resource "aws_elb" "web_elb" {
+  name = "web-elb"
+  security_groups = [
+    aws_security_group.elb_http.id
+  ]
+  subnets = aws_subnet.private.*.id
+
+
+  cross_zone_load_balancing   = true
+
+  health_check {
+    healthy_threshold = 2
+    unhealthy_threshold = 2
+    timeout = 3
+    interval = 30
+    target = "HTTP:80/"
+  }
+
+  listener {
+    lb_port = 80
+    lb_protocol = "http"
+    instance_port = "80"
+    instance_protocol = "http"
+  }
+
+}
+
+###################################################################################
+# Web_server asg Configuration
+###################################################################################
+resource "aws_autoscaling_group" "web" {
+  name = "${aws_launch_configuration.web.name}-asg"
+
+  min_size             = 1
+  desired_capacity     = 1
+  max_size             = 1
+
+  health_check_type    = "ELB"
+  load_balancers = [aws_elb.web_elb.id ]
+
+  launch_configuration = aws_launch_configuration.web.name
+
+  enabled_metrics = [
+    "GroupMinSize",
+    "GroupMaxSize",
+    "GroupDesiredCapacity",
+    "GroupInServiceInstances",
+    "GroupTotalInstances"
+  ]
+
+  metrics_granularity = "1Minute"
+
+  vpc_zone_identifier  = aws_subnet.private.*.id
+
+
+  # Required to redeploy without an outage.
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "web"
+    propagate_at_launch = true
+  }
+
+}
+
+###################################################################################
+# Web_server asg policy
+###################################################################################
+
+resource "aws_autoscaling_policy" "web_policy_up" {
+  name = "web_policy_up"
+  scaling_adjustment = 1
+  adjustment_type = "ChangeInCapacity"
+  cooldown = 300
+  autoscaling_group_name = aws_autoscaling_group.web.name
+}
+
+resource "aws_autoscaling_policy" "web_policy_down" {
+  name = "web_policy_down"
+  scaling_adjustment = -1
+  adjustment_type = "ChangeInCapacity"
+  cooldown = 300
+  autoscaling_group_name = aws_autoscaling_group.web.name
 }
