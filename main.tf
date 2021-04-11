@@ -82,7 +82,6 @@ resource "aws_subnet" "database" {
 resource "aws_route_table" "database" {
   count = 1
   vpc_id = aws_vpc.default.id
-
   tags = {
     "Name" = "database-route-table"
   }
@@ -98,6 +97,51 @@ resource "aws_route" "database_nat_gateway" {
   timeouts {
     create = "5m"
   }
+}
+
+###################################################################################
+# Database routes
+###################################################################################
+resource "aws_route_table" "private" {
+  count = 1
+  vpc_id = aws_vpc.default.id
+  tags = {
+    "Name" = "private-route-table"
+  }
+
+}
+resource "aws_route" "private_nat_gateway" {
+  count = 1
+
+  route_table_id         = element(aws_route_table.private.*.id, count.index)
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = element(aws_nat_gateway.default.*.id, count.index)
+
+  timeouts {
+    create = "5m"
+  }
+}
+##########################
+# Route table association
+##########################
+resource "aws_route_table_association" "private" {
+  count = 3
+
+  subnet_id = element(aws_subnet.private.*.id, count.index)
+  route_table_id = element(
+    aws_route_table.private.*.id,
+    count.index,
+  )
+}
+
+resource "aws_route_table_association" "database" {
+  count = 3
+
+  subnet_id = element(aws_subnet.database.*.id, count.index)
+  route_table_id = element(
+    coalescelist(aws_route_table.database.*.id, aws_route_table.private.*.id),
+    count.index,
+  )
 }
 ###################################################################################
 # Private subnet
