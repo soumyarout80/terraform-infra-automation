@@ -1,4 +1,13 @@
-- hosts: localhost
-  connection: local
-  roles:
-    - ansible-role-nginx
+- hosts: 127.0.0.1
+  become: yes
+  tasks:
+    - name: update
+      apt: name=nginx state=latest
+
+    - name: install nginx
+      apt: name=nginx state=latest
+      notify:
+        - restart: nginx
+  handlers:
+    - name: restart nginx
+      service: name=nginx state=reloaded
