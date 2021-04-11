@@ -10,5 +10,5 @@ module "vpc" {
   public_subnets      = "20.10.11.0/24"
   database_subnets    = ["20.10.21.0/24", "20.10.22.0/24", "20.10.23.0/24"]
 
-  vpc_enabled     = true
+  vpc_enabled         = true
 }
