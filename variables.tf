@@ -19,6 +19,9 @@ variable "database_subnets" {
 variable "azs" {
   default = ""
 }
+variable "single_nat_gateway" {
+  default = ""
+}
 variable "database_subnet_suffix" {
   default = "database-subnet"
 }
