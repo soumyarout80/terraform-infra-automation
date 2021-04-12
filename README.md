@@ -3,8 +3,11 @@
  
 
 ### Project Structure and deployment files! :sparkles:
-* [Ansible](ansible)
-* [AWS VPC module](aws-module)
+* [Ansible Roles](ansible)
+* [Ansible Mongodb role](ansible/ansible-role-mongodb)
+* [Ansible node.js role](ansible/ansible-role-nodejs)  
+* [Ansible nginx role](ansible/ansible-role-nginx)   
+* [AWS VPC terraform module](aws-module)
 
 ### Trigger terraform
 ```shell
