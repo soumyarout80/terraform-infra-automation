@@ -1,0 +1,16 @@
+- hosts: 127.0.0.1
+  become: yes
+  tasks:
+    - name: Add .ssh directories
+      file:
+        path=/home/ubuntu/.ssh
+        state=directory
+        mode=0700
+        owner=ubuntu
+        group=ubuntu
+
+    - name: SSH keys
+      copy:
+        src=keys/id_rsa.pub
+        dest=/home/ubuntu/.ssh/
+        mode=0600
