@@ -8,7 +8,8 @@
 
 ### Trigger terraform
 ```shell
-cd aws-module
+git clone https://github.com/soumyarout80/terraform-infra-automation.git
+cd terraform-infra-automation/aws-module
 terraform init
 terraform validate
 terraform plan
