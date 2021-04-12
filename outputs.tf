@@ -48,5 +48,9 @@ output "igw_id" {
 }
 
 output "elb_dns_name" {
-  value = aws_elb.web_elb.dns_name
+  value = aws_lb.alb_nginx.dns_name
+}
+
+output "vpn_access_server_dns" {
+  value = aws_eip.vpn_access_server.public_dns
 }
