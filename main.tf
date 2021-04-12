@@ -100,7 +100,7 @@ resource "aws_route" "database_nat_gateway" {
 }
 
 ###################################################################################
-# Database routes
+# Private routes
 ###################################################################################
 resource "aws_route_table" "private" {
   count = 1
@@ -116,6 +116,28 @@ resource "aws_route" "private_nat_gateway" {
   route_table_id         = element(aws_route_table.private.*.id, count.index)
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = element(aws_nat_gateway.default.*.id, count.index)
+
+  timeouts {
+    create = "5m"
+  }
+}
+
+###################################################################################
+# Public routes
+###################################################################################
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.default.id
+  tags = {
+    "Name" = "public-route-table"
+  }
+
+}
+resource "aws_route" "public_ig" {
+  count = 1
+
+  route_table_id         = element(aws_route_table.public.*.id, count.index)
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.default.id
 
   timeouts {
     create = "5m"
@@ -143,6 +165,11 @@ resource "aws_route_table_association" "database" {
     count.index,
   )
 }
+
+resource "aws_route_table_association" "public" {
+  subnet_id = aws_subnet.public.id
+  route_table_id = aws_route_table.public.id
+}
 ###################################################################################
 # Private subnet
 ###################################################################################
@@ -164,7 +191,7 @@ resource "aws_subnet" "private" {
 }
 
 ###################################################################################
-# Private subnet
+# Public subnet
 ###################################################################################
 resource "aws_subnet" "public" {
   vpc_id                          = aws_vpc.default.id
@@ -231,7 +258,7 @@ resource "aws_launch_configuration" "web" {
   security_groups = [ aws_security_group.allow_http.id ]
   associate_public_ip_address = true
 
-  user_data = filebase64("${path.module}/bootstrap.sh")
+  user_data = filebase64("${path.module}/bootstrap-nginx.sh")
   lifecycle {
     create_before_destroy = true
   }
@@ -318,7 +345,7 @@ resource "aws_autoscaling_group" "web" {
 
   metrics_granularity = "1Minute"
 
-  vpc_zone_identifier  = aws_subnet.private.*.id
+  vpc_zone_identifier  = aws_subnet.public.*.id
 
 
   # Required to redeploy without an outage.
