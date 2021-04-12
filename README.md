@@ -16,6 +16,12 @@ terraform plan
 terraform apply
 ```
 
+### Configure Mongodb using Ansible
+```shell
+cd terraform-infra-automation/ansible
+ansible-playbook -i inventory mongo-db.yml
+```
+
 ## License
 
 See the [LICENSE](LICENSE) file for license rights and limitations (MIT).
